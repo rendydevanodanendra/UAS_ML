@@ -7,18 +7,21 @@ import numpy as np
 st.set_page_config(page_title="Income Predictor", layout="centered")
 
 # Fungsi untuk memuat model dan encoder
-@st.cache_resource
+@@st.cache_resource
 def load_artifacts():
-    with open('model_income.pkl', 'rb') as f:
+    # Pastikan file-file ini sudah ada di repositori GitHub yang sama
+    model_path = 'model_income.pkl'
+    encoder_path = 'encoder.pkl'
+    label_enc_path = 'label_encoder.pkl'
+    
+    with open(model_path, 'rb') as f:
         model = pickle.load(f)
-    with open('encoder.pkl', 'rb') as f:
+    with open(encoder_path, 'rb') as f:
         encoder = pickle.load(f)
-    with open('label_encoder.pkl', 'rb') as f:
+    with open(label_enc_path, 'rb') as f:
         label_enc = pickle.load(f)
+        
     return model, encoder, label_enc
-
-try:
-    model, encoder, label_enc = load_artifacts()
 
     st.title("💰 Prediksi Pendapatan Sensus")
     st.write("Masukkan data di bawah ini untuk memprediksi kategori pendapatan.")
@@ -74,3 +77,4 @@ try:
             
 except FileNotFoundError:
     st.error("Error: File model atau encoder tidak ditemukan. Pastikan sudah menjalankan tahap export di notebook.")
+
