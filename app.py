@@ -1,110 +1,76 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
 import pickle
-from sklearn.preprocessing import OrdinalEncoder
+import numpy as np
 
-# --- KONFIGURASI HALAMAN ---
-st.set_page_config(page_title="Adult Income Predictor", layout="wide")
+# Konfigurasi Halaman
+st.set_page_config(page_title="Income Predictor", layout="centered")
 
-# --- LOAD DATA UNTUK VISUALISASI ---
-@st.cache_data
-def load_data():
-    df = pd.read_csv("adult.csv") # Pastikan file adult.csv ada di GitHub Anda
-    df.replace("?", "unknown", inplace=True)
-    return df
-
-df_org = load_data()
-
-# --- SIDEBAR: INPUT USER ---
-st.sidebar.header("Input Data Sensus")
-
-def user_input_features():
-    age = st.sidebar.slider("Usia", 17, 90, 30)
-    workclass = st.sidebar.selectbox("Status Kerja", df_org['workclass'].unique())
-    fnlwgt = st.sidebar.number_input("fnlwgt", value=77516)
-    education = st.sidebar.selectbox("Pendidikan", df_org['education'].unique())
-    education_num = st.sidebar.slider("Education Num", 1, 16, 13)
-    marital_status = st.sidebar.selectbox("Status Pernikahan", df_org['marital.status'].unique())
-    occupation = st.sidebar.selectbox("Pekerjaan", df_org['occupation'].unique())
-    relationship = st.sidebar.selectbox("Hubungan", df_org['relationship'].unique())
-    race = st.sidebar.selectbox("Ras", df_org['race'].unique())
-    sex = st.sidebar.selectbox("Jenis Kelamin", df_org['sex'].unique())
-    cap_gain = st.sidebar.number_input("Capital Gain", value=0)
-    cap_loss = st.sidebar.number_input("Capital Loss", value=0)
-    hours_per_week = st.sidebar.slider("Jam Kerja per Minggu", 1, 99, 40)
-    native_country = st.sidebar.selectbox("Negara Asal", df_org['native.country'].unique())
-
-    data = {
-        'age': age, 'workclass': workclass, 'fnlwgt': fnlwgt, 'education': education,
-        'education.num': education_num, 'marital.status': marital_status,
-        'occupation': occupation, 'relationship': relationship, 'race': race,
-        'sex': sex, 'capital.gain': cap_gain, 'capital.loss': cap_loss,
-        'hours.per.week': hours_per_week, 'native.country': native_country
-    }
-    return pd.DataFrame(data, index=[0])
-
-input_df = user_input_features()
-
-# --- MAIN PAGE ---
-st.title("Aplikasi Prediksi Pendapatan Sensus")
-st.markdown("""
-Aplikasi ini memprediksi apakah pendapatan seseorang **>50K** atau **<=50K** berdasarkan data sensus menggunakan model *Gradient Boosting*.
-""")
-
-# --- BAGIAN VISUALISASI (Perbaikan Error Count) ---
-st.subheader("Analisis Distribusi Data")
-col1, col2 = st.columns(2)
-
-with col1:
-    # Perbaikan error 'count' untuk Education vs Sex
-    df_plot1 = df_org.groupby(["education", "sex"]).size().reset_index(name='count')
-    fig1, ax1 = plt.subplots()
-    sns.barplot(data=df_plot1, x="education", y="count", hue="sex", ax=ax1)
-    plt.xticks(rotation=90)
-    st.pyplot(fig1)
-
-with col2:
-    # Perbaikan error 'count' untuk Hours vs Sex
-    df_plot2 = df_org.groupby(["hours.per.week", "sex"]).size().reset_index(name='count')
-    fig2, ax2 = plt.subplots()
-    sns.barplot(data=df_plot2, x="hours.per.week", y="count", hue="sex", ax=ax2)
-    st.pyplot(fig2)
-
-# --- PROSES PREDIKSI ---
-st.subheader("Hasil Prediksi")
-
-# 1. Gabungkan input user dengan data asli untuk encoding yang konsisten
-df_combined = pd.concat([input_df, df_org.drop('income', axis=1)], axis=0)
-
-# 2. Encoding
-cat_cols = df_org.select_dtypes(exclude='number').columns.drop('income')
-encoder = OrdinalEncoder()
-df_combined[cat_cols] = encoder.fit_transform(df_combined[cat_cols])
-
-# 3. Ambil baris pertama (input user)
-input_encoded = df_combined[:1]
-
-# 4. Load Model (Pastikan file .pkl sudah diupload ke GitHub)
-try:
+# Fungsi untuk memuat model dan encoder
+@st.cache_resource
+def load_artifacts():
     with open('model_income.pkl', 'rb') as f:
         model = pickle.load(f)
-    
-    prediction = model.predict(input_encoded)
-    prediction_proba = model.predict_proba(input_encoded)
+    with open('encoder.pkl', 'rb') as f:
+        encoder = pickle.load(f)
+    with open('label_encoder.pkl', 'rb') as f:
+        label_enc = pickle.load(f)
+    return model, encoder, label_enc
 
-    if prediction[0] == 1:
-        st.success("Prediksi Pendapatan: **>50K**")
-    else:
-        st.info("Prediksi Pendapatan: **<=50K**")
+try:
+    model, encoder, label_enc = load_artifacts()
 
-    st.write(f"Probabilitas: {np.max(prediction_proba)*100:.2f}%")
+    st.title("💰 Prediksi Pendapatan Sensus")
+    st.write("Masukkan data di bawah ini untuk memprediksi kategori pendapatan.")
 
+    # Form Input User (Fokus pada 14 fitur sesuai dataset)
+    with st.form("prediction_form"):
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            age = st.number_input("Usia", min_value=17, max_value=90, value=30)
+            workclass = st.selectbox("Status Kerja", ['Private', 'Self-emp-not-inc', 'Local-gov', 'unknown', 'State-gov', 'Self-emp-inc', 'Federal-gov', 'Without-pay', 'Never-worked'])
+            fnlwgt = st.number_input("fnlwgt (Final Weight)", value=77516)
+            education = st.selectbox("Pendidikan", ['Bachelors', 'HS-grad', '11th', 'Masters', '9th', 'Some-college', 'Assoc-acdm', 'Assoc-voc', '7th-8th', 'Doctorate', 'Prof-school', '5th-6th', '10th', '1st-4th', 'Preschool', '12th'])
+            edu_num = st.slider("Education Num", 1, 16, 13)
+            marital = st.selectbox("Status Pernikahan", ['Married-civ-spouse', 'Never-married', 'Divorced', 'Separated', 'Widowed', 'Married-spouse-absent', 'Married-AF-spouse'])
+            occupation = st.selectbox("Pekerjaan", ['Adm-clerical', 'Exec-managerial', 'Handlers-cleaners', 'Prof-specialty', 'Other-service', 'Sales', 'Craft-repair', 'Transport-moving', 'Farming-fishing', 'Machine-op-inspct', 'Tech-support', 'unknown', 'Protective-serv', 'Armed-Forces', 'Priv-house-serv'])
+
+        with col2:
+            relationship = st.selectbox("Hubungan", ['Husband', 'Not-in-family', 'Own-child', 'Unmarried', 'Wife', 'Other-relative'])
+            race = st.selectbox("Ras", ['White', 'Black', 'Asian-Pac-Islander', 'Amer-Indian-Eskimo', 'Other'])
+            sex = st.selectbox("Jenis Kelamin", ['Male', 'Female'])
+            cap_gain = st.number_input("Capital Gain", value=0)
+            cap_loss = st.number_input("Capital Loss", value=0)
+            hours = st.number_input("Jam Kerja per Minggu", min_value=1, max_value=99, value=40)
+            country = st.selectbox("Negara Asal", ['United-States', 'Cuba', 'Jamaica', 'India', 'unknown', 'Mexico', 'South', 'Puerto-Rico', 'Honduras', 'England', 'Canada', 'Germany', 'Iran', 'Philippines', 'Italy', 'Poland', 'Columbia', 'Cambodia', 'Thailand', 'Ecuador', 'Laos', 'Taiwan', 'Haiti', 'Portugal', 'Dominican-Republic', 'El-Salvador', 'France', 'Guatemala', 'China', 'Japan', 'Yugoslavia', 'Peru', 'Outlying-US(Guam-USVI-etc)', 'Scotland', 'Trinadad&Tobago', 'Greece', 'Nicaragua', 'Vietnam', 'Hong', 'Ireland', 'Hungary', 'Holand-Netherlands'])
+
+        submit = st.form_submit_button("Prediksi")
+
+    if submit:
+        # 1. Kumpulkan data input
+        input_data = pd.DataFrame([{
+            'age': age, 'workclass': workclass, 'fnlwgt': fnlwgt, 'education': education,
+            'education.num': edu_num, 'marital.status': marital, 'occupation': occupation,
+            'relationship': relationship, 'race': race, 'sex': sex,
+            'capital.gain': cap_gain, 'capital.loss': cap_loss,
+            'hours.per.week': hours, 'native.country': country
+        }])
+
+        # 2. Transformasi kategori menggunakan encoder yang sudah disimpan
+        cat_cols = ['workclass', 'education', 'marital.status', 'occupation', 'relationship', 'race', 'sex', 'native.country']
+        input_data[cat_cols] = encoder.transform(input_data[cat_cols])
+
+        # 3. Lakukan Prediksi
+        pred_numeric = model.predict(input_data)
+        result = label_enc.inverse_transform(pred_numeric)
+
+        # 4. Tampilkan Hasil
+        st.write("---")
+        if result[0] == '>50K':
+            st.success(f"Hasil Prediksi: **{result[0]}** (Penghasilan Tinggi)")
+        else:
+            st.info(f"Hasil Prediksi: **{result[0]}** (Penghasilan Rendah)")
+            
 except FileNotFoundError:
-    st.error("File 'model_income.pkl' tidak ditemukan. Harap upload model ke repositori GitHub Anda.")
-
-# --- FOOTER ---
-st.write("---")
-st.write("Dikembangkan oleh Kelompok 9 Teknik Informatika - Universitas Trunojoyo Madura [cite: 11]")
+    st.error("Error: File model atau encoder tidak ditemukan. Pastikan sudah menjalankan tahap export di notebook.")
