@@ -7,7 +7,7 @@ import numpy as np
 st.set_page_config(page_title="Income Predictor", layout="centered")
 
 # Fungsi untuk memuat model dan encoder
-@@st.cache_resource
+@st.cache_resource
 def load_artifacts():
     # Pastikan file-file ini sudah ada di repositori GitHub yang sama
     model_path = 'model_income.pkl'
@@ -77,4 +77,5 @@ def load_artifacts():
             
 except FileNotFoundError:
     st.error("Error: File model atau encoder tidak ditemukan. Pastikan sudah menjalankan tahap export di notebook.")
+
 
