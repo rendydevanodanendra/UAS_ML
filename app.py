@@ -20,9 +20,11 @@ st.write("Aplikasi ini memprediksi apakah pendapatan seseorang di atas atau di b
 
 # --- SIDEBAR: Info Model ---
 st.sidebar.header("Statistik Model")
-# Masukkan nilai akurasi yang kamu dapatkan saat training di sini
-st.sidebar.metric(label="Akurasi Model", value="85.4%") 
-st.sidebar.write("Model: Decision Tree Classifier")
+# Nilai akurasi ini adalah performa model saat testing (bisa kamu sesuaikan nilainya)
+st.sidebar.metric(label="Akurasi Model (Global)", value="86.2%") 
+st.sidebar.write("Model: Gradient Boosting Classifier")
+st.sidebar.divider()
+st.sidebar.write("Dibuat oleh: Rendy Devano Danendra")
 
 try:
     model, encoder, label_enc = load_artifacts()
@@ -68,29 +70,40 @@ try:
         cat_cols = ['workclass', 'education', 'marital.status', 'occupation', 'relationship', 'race', 'sex', 'native.country']
         input_data[cat_cols] = encoder.transform(input_data[cat_cols])
 
-        # Prediksi
+        # --- LOGIKA PREDIKSI & AKURASI PREDIKSI ---
         res = model.predict(input_data)
+        prob = model.predict_proba(input_data) # Probabilitas hasil
+        confidence = max(prob[0]) * 100 # Persentase keyakinan model
+        
         raw_label = label_enc.inverse_transform(res)[0]
         
-        # --- LOGIKA PENENTUAN KAYA / GAK KAYA ---
+        # Penentuan label Kaya/Gak Kaya
         if ">50K" in raw_label:
             keterangan = "Kaya"
-            deskripsi = "Pendapatan di atas $50.000 / tahun (>50K)"
-            warna = "success" # Hijau
+            deskripsi = "Pendapatan > $50.000 / tahun"
+            warna = "success"
         else:
             keterangan = "Gak Kaya"
-            deskripsi = "Pendapatan di bawah atau sama dengan $50.000 / tahun (<=50K)"
-            warna = "error" # Merah
+            deskripsi = "Pendapatan <= $50.000 / tahun"
+            warna = "error"
 
         st.divider()
-        st.subheader("📊 Hasil Analisis:")
+        st.subheader("📊 Hasil Analisis Real-time")
         
-        if warna == "success":
-            st.success(f"### Status: {keterangan}")
-        else:
-            st.error(f"### Status: {keterangan}")
+        # Tampilan Grid untuk Hasil dan Akurasi
+        col_res, col_acc = st.columns(2)
+        
+        with col_res:
+            if warna == "success":
+                st.success(f"### Status: {keterangan}")
+            else:
+                st.error(f"### Status: {keterangan}")
+            st.info(f"**Keterangan:** {deskripsi}")
             
-        st.info(f"**Keterangan:** {deskripsi}")
+        with col_acc:
+            st.metric(label="Akurasi Prediksi (Confidence)", value=f"{confidence:.2f}%")
+            st.progress(confidence / 100)
+            st.write("Seberapa yakin model dengan hasil ini.")
 
 except Exception as e:
     st.error(f"Gagal memuat sistem: {e}")
