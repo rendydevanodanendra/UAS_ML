@@ -21,7 +21,7 @@ st.write("Aplikasi ini memprediksi apakah pendapatan seseorang di atas atau di b
 # --- SIDEBAR: Info Model ---
 st.sidebar.header("Statistik Model")
 # Nilai akurasi ini adalah performa model saat testing (bisa kamu sesuaikan nilainya)
-st.sidebar.metric(label="Akurasi Model (Global)", value="86.2%") 
+st.sidebar.metric(label="Akurasi Model (Global)", value="87.2%") 
 st.sidebar.write("Model: Gradient Boosting Classifier")
 st.sidebar.divider()
 st.sidebar.write("Dibuat oleh: Rendy Devano Danendra")
@@ -30,7 +30,7 @@ try:
     model, encoder, label_enc = load_artifacts()
 
     with st.form("my_form"):
-        st.subheader("📝 Masukkan Data Sensus")
+        st.subheader("📝 Masukkan Data Baru")
         
         col1, col2 = st.columns(2)
         
@@ -107,3 +107,4 @@ try:
 
 except Exception as e:
     st.error(f"Gagal memuat sistem: {e}")
+
